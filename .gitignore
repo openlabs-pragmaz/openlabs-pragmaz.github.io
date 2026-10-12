@@ -1,0 +1,26 @@
+# Secretos
+.env
+.env.*
+
+# Datos de personas o de clientes
+*.csv
+*.xlsx
+datos-privados/
+
+# Dependencias
+node_modules/
+
+# Migraciones de la base (se quedan en la carpeta local)
+supabase/
+
+# Respaldos y exportaciones de la base
+*.sql
+*.dump
+*.backup
+*.bak
+
+# Registros y archivos del sistema
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

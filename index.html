@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://vweyqwbhoynophpzkdss.supabase.co; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Plataforma de Seguimiento · Open Labs</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/estilos.css?v=202610121404">
+  <script src="vendor/supabase.js?v=202610121404" defer></script>
+  <script type="module" src="js/app.js?v=202610121404"></script>
+</head>
+<body>
+  <a class="saltar" id="saltar" href="#contenido">Saltar al contenido</a>
+
+  <header class="barra" id="barra" hidden>
+    <div class="barra__marca">
+      <span class="logos">
+        <img src="img/logo-cln.webp" alt="CLN · Compañía Licorera de Nicaragua" width="128" height="40">
+        <img src="img/logo-isa.webp" alt="ISA · Ingenio San Antonio" width="124" height="40">
+      </span>
+    </div>
+    <nav class="barra__nav" id="nav" aria-label="Secciones"></nav>
+    <details class="usuario" id="usuario">
+      <summary class="usuario__resumen">
+        <span class="usuario__nombre" id="usuario-nombre"></span>
+        <span class="usuario__avatar" id="usuario-iniciales" aria-hidden="true"></span>
+        <span class="solo-lectores">: opciones de la cuenta</span>
+      </summary>
+      <div class="usuario__menu">
+        <p class="usuario__rol" id="usuario-rol"></p>
+        <a class="usuario__opcion" href="#/clave" data-ruta="/clave">Cambiar contraseña</a>
+        <button type="button" class="usuario__opcion usuario__opcion--salir" id="salir">Salir</button>
+      </div>
+    </details>
+  </header>
+
+  <main id="contenido" class="contenido" tabindex="-1">
+    <p class="cargando">Cargando…</p>
+  </main>
+
+  <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+</body>
+</html>
