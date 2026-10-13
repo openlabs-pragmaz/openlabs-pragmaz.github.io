@@ -146,6 +146,10 @@ export const esRegistroV3 = (ini) => Boolean(ini.direccion_id || ini.gerencia_id
   || ini.org_otro_niveles?.length || ini.org_directo_niveles?.length
   || ini.modalidad || ini.estado_datos || ini.declaracion_uso != null);
 
+// Empresa de la iniciativa y, si eligió una marca en el Registro ("<empresa> — <marca>"), la marca:
+// "<empresa> · <marca>". La marca la pone la base (iniciativa.empresa_marca).
+export const textoEmpresa = (ini) => [ini.participante?.empresa?.nombre, ini.empresa_marca].filter(Boolean).join(' · ');
+
 // Unidad por clasificar: sin unidad del catálogo o, en el Registro v3, con algún nivel escrito en
 // "Mi área no aparece" (aunque tenga una unidad de arriba). Lo mismo que muestra la columna Unidad.
 export const unidadPorClasificar = (ini, porId) => !porId.has(ini.area_id) || Boolean(ini.org_otro_niveles?.length);

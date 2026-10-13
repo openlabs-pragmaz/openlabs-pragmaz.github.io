@@ -1,18 +1,18 @@
 import {
   el, pintar, repintar, insignia, formatoFecha, mensajeError, normalizar, turnoActual, vigente, conBoton, errorEn, avisar,
-} from '../ui.js?v=202610121404';
+} from '../ui.js?v=202610131530';
 import {
   cargarCatalogos, obtenerIniciativa, respuestasPendientesDe, consultasSinResponderDe, bitacoraDe, ayudasDe, seleccionarMvp,
   integrantesDe, cambiosEstadoDatos, nombresEquipo,
-} from '../datos.js?v=202610121404';
+} from '../datos.js?v=202610131530';
 import {
   FORMULARIOS, textoHerramienta, textoTipo, textoArea, textoMedida, motivos,
-  MODALIDAD, FRECUENCIA, esRegistroV3, escritoPorNivel, NIVELES_V3,
-} from '../etiquetas.js?v=202610121404';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610121404';
-import { seccionSeguimiento } from './seguimiento.js?v=202610121404';
-import { seccionIntegrantes } from './integrantes.js?v=202610121404';
-import { seccionUsoDatos } from './semaforo.js?v=202610121404';
+  MODALIDAD, FRECUENCIA, esRegistroV3, escritoPorNivel, NIVELES_V3, textoEmpresa,
+} from '../etiquetas.js?v=202610131530';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610131530';
+import { seccionSeguimiento } from './seguimiento.js?v=202610131530';
+import { seccionIntegrantes } from './integrantes.js?v=202610131530';
+import { seccionUsoDatos } from './semaforo.js?v=202610131530';
 
 const esOperador = (perfil) => perfil.rol === 'admin' || perfil.rol === 'facilitador';
 const gestionaTickets = (perfil) => esOperador(perfil) || perfil.rol === 'soporte';
@@ -134,7 +134,7 @@ export async function vistaRegistro(contenedor, perfil, codigo, { recarga = fals
       seccion(enGrupo ? 'Quien llenó el Registro' : 'Persona', [
         ['Nombre', p.nombre],
         ['Correo', p.correo],
-        ['Empresa', p.empresa?.nombre],
+        ['Empresa', textoEmpresa(ini)],
         // El Registro anterior pedía el nombre de la jefatura; el v3, su correo.
         p.jefatura_nombre ? ['Jefatura', p.jefatura_nombre] : null,
         // Con semáforo, el correo de la jefatura va en "Uso responsable", junto a la autorización.

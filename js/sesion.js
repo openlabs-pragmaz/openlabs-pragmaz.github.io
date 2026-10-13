@@ -1,4 +1,4 @@
-import { supabase } from './cliente.js?v=202610121404';
+import { supabase } from './cliente.js?v=202610131530';
 
 // Perfil de quien usa la plataforma. El rol solo decide qué botones y menús se muestran:
 // lo que cada quien puede ver o cambiar lo decide la base (RLS).

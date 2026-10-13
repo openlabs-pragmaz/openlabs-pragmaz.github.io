@@ -1,10 +1,10 @@
-import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610121404';
-import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610121404';
+import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610131530';
+import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610131530';
 import {
   textoHerramienta, textoTipo, caminoArea, unidadesIniciativa, opcionesArea, motivos, SEMAFOROS, BLOQUEOS,
-  esRegistroV3, escritoPorNivel, NIVELES_V3, unidadPorClasificar,
-} from '../etiquetas.js?v=202610121404';
-import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610121404';
+  esRegistroV3, escritoPorNivel, NIVELES_V3, unidadPorClasificar, textoEmpresa,
+} from '../etiquetas.js?v=202610131530';
+import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610131530';
 
 // Filtros de la lista: se conservan mientras dura la sesión en esta pestaña (al volver del detalle).
 const FILTROS_INICIALES = { texto: '', empresa: '', area: '', herramienta: '', tipo: '', estado: '', atencion: '', datos: '', bloqueo: '', mvp: false, desactivadas: false };
@@ -85,7 +85,7 @@ export async function vistaRegistros(contenedor, perfil, consulta, { desdeDetall
       // Su área y todas las de arriba: elegir una unidad en el filtro trae también las de abajo.
       areas: unidadesIniciativa(ini, porId),
       bloqueos: bloqueos.get(ini.id) ?? [],
-      busqueda: [ini.codigo, ini.nombre, ini.participante.nombre, ini.participante.correo].map(normalizar).join(' '),
+      busqueda: [ini.codigo, ini.nombre, ini.participante.nombre, ini.participante.correo, ini.empresa_marca].map(normalizar).join(' '),
       fila: fila(ini, porId, operador, areaAsignada, ultimoCambio.get(ini.id)),
     };
   });
@@ -332,7 +332,7 @@ function fila(ini, porId, operador, areaAsignada, cambio) {
               : null)
         : null),
     el('td', { 'data-etiqueta': COLUMNAS[2] },
-      el('span', { text: `${p.nombre} · ${p.empresa?.nombre ?? ''}` }), el('span', { class: 'celda__nota celda__correo', text: p.correo })),
+      el('span', { text: `${p.nombre} · ${textoEmpresa(ini)}` }), el('span', { class: 'celda__nota celda__correo', text: p.correo })),
     el('td', { 'data-etiqueta': COLUMNAS[3] }, esRegistroV3(ini) ? celdaUnidadV3(ini, porId) : (
       // Formulario anterior: solo la unidad desde la que se propuso; el camino completo, al pasar el
       // puntero y en el detalle.

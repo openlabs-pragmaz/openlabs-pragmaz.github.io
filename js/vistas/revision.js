@@ -1,15 +1,15 @@
 import {
   el, pintar, repintar, enfocar, insignia, formatoFecha, mensajeError, avisar, campo, selector,
   conBoton, errorCampo, errorEn, conteoRevision, turnoActual, vigente,
-} from '../ui.js?v=202610121404';
+} from '../ui.js?v=202610131530';
 import {
   cargarCatalogos, listarRevisiones, listarResueltas, iniciativasEnRevision, iniciativasDePersona,
   nombresEquipo, reintentar, resolverRevision, reabrirRevision, estadoRespuesta, actualizarIniciativa, asociarTicket,
   corregirEmpresaRegistro, corregirPuntoAvance, reemplazarConRegistro, obtenerIniciativa, agregarIntegrante,
   gruposActivosDe, quitarIntegrante, integrantesDe,
-} from '../datos.js?v=202610121404';
-import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610121404';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610121404';
+} from '../datos.js?v=202610131530';
+import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610131530';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610131530';
 
 let pestana = 'registro';
 const LIMITE_RESUELTAS = 50;

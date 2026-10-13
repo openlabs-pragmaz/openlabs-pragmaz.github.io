@@ -1,7 +1,7 @@
-import { el, avisar, mensajeError, campo, selector, conBoton, soltarBoton, errorEn, errorCampo } from '../ui.js?v=202610121404';
+import { el, avisar, mensajeError, campo, selector, conBoton, soltarBoton, errorEn, errorCampo } from '../ui.js?v=202610131530';
 import { actualizarIniciativa, crearEquivalencia, crearArea, olvidarCatalogos, nivelDelRegistro,
-  respuestasPendientesDe, consultasSinResponderDe, corregirOrganizacion, MEDIDAS } from '../datos.js?v=202610121404';
-import { opcionesArea, esRegistroV3, escritoPorNivel, NIVELES_V3 } from '../etiquetas.js?v=202610121404';
+  respuestasPendientesDe, consultasSinResponderDe, corregirOrganizacion, MEDIDAS } from '../datos.js?v=202610131530';
+import { opcionesArea, esRegistroV3, escritoPorNivel, NIVELES_V3 } from '../etiquetas.js?v=202610131530';
 
 // Formularios para corregir una iniciativa (admin y facilitador). Se usan en el detalle del
 // registro y en Respuestas en revisión. La base decide si cada cambio se guarda: el facilitador

@@ -1,4 +1,4 @@
-import { supabase } from './cliente.js?v=202610121404';
+import { supabase } from './cliente.js?v=202610131530';
 
 // Consultas a Supabase. Cada consulta devuelve solo lo que RLS deja ver a quien tiene la sesión:
 // aquí no se filtra por rol ni por empresa.
@@ -10,7 +10,7 @@ const SELECT_INICIATIVA = `
   medida_tipo, medida_detalle, valor_antes, situacion_antes, valor_despues, situacion_despues,
   datos_disponibles, resultado_esperado, dato_confidencial, usuario_identificado,
   mvp_seleccionada, mvp_marcada_por, mvp_marcada_en,
-  area_id, area_declarada, frecuencia,
+  area_id, area_declarada, frecuencia, empresa_marca,
   direccion_id, gerencia_id, jefatura_id, org_otro_niveles, org_directo_niveles, org_cruce_estado,
   modalidad, equipo_nombre, equipo_transversal,
   tipos_datos, autorizacion_jefatura, fecha_autorizacion, origen_datos, envio_externo,

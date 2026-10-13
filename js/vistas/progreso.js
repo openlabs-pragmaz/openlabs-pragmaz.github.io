@@ -1,6 +1,6 @@
-import { el, pintar, repintar, mensajeError, rolesDeTabla, turnoActual, vigente, campo, selector, formatoFecha } from '../ui.js?v=202610121404';
-import { cargarCatalogos, listarIniciativas, ultimosAvances } from '../datos.js?v=202610121404';
-import { cadenaArea, unidadesIniciativa, opcionesArea } from '../etiquetas.js?v=202610121404';
+import { el, pintar, repintar, mensajeError, rolesDeTabla, turnoActual, vigente, campo, selector, formatoFecha } from '../ui.js?v=202610131530';
+import { cargarCatalogos, listarIniciativas, ultimosAvances } from '../datos.js?v=202610131530';
+import { cadenaArea, unidadesIniciativa, opcionesArea } from '../etiquetas.js?v=202610131530';
 
 // Progreso, el tablero del observador: cómo van las iniciativas de la empresa o del
 // área de quien mira. Todo sale de datos que ya llegan: la etapa (el estado, con los pasos propios

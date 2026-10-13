@@ -1,6 +1,6 @@
-import { el, pintar, avisar, mensajeError } from '../ui.js?v=202610121404';
-import { cambiarClave, cerrarSesion } from '../sesion.js?v=202610121404';
-import { CLAVE_LARGO_MINIMO } from '../config.js?v=202610121404';
+import { el, pintar, avisar, mensajeError } from '../ui.js?v=202610131530';
+import { cambiarClave, cerrarSesion } from '../sesion.js?v=202610131530';
+import { CLAVE_LARGO_MINIMO } from '../config.js?v=202610131530';
 
 // obligatoria = primer ingreso con la contraseña temporal: no hay otra pantalla disponible.
 export function vistaClave(contenedor, { obligatoria = false, alTerminar }) {
