@@ -1,11 +1,11 @@
 import {
   el, pintar, repintar, enfocar, insignia, formatoFecha, mensajeError, avisar, campo, selector,
   conBoton, errorCampo, errorEn, conteoConsultas, turnoActual, vigente,
-} from '../ui.js?v=202610131530';
+} from '../ui.js?v=202610132104';
 import {
   cargarCatalogos, listarTickets, nombresEquipo, guardarBorradorTicket, responderTicket,
   deshacerEnvioTicket, cerrarTicketSinResponder, soltarConsulta, reabrirConsulta,
-} from '../datos.js?v=202610131530';
+} from '../datos.js?v=202610132104';
 
 let pestana = 'sin-responder';
 // Filtros de la bandeja: se conservan mientras dura la sesión en esta pestaña.

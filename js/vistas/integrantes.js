@@ -1,13 +1,15 @@
-import { el, campo, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha, insignia } from '../ui.js?v=202610131530';
-import { agregarIntegrante, quitarIntegrante } from '../datos.js?v=202610131530';
-import { ROL_EQUIPO } from '../etiquetas.js?v=202610131530';
+import { el, campo, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha, insignia } from '../ui.js?v=202610132104';
+import { agregarIntegrante, agregarIntegranteExcepcion, quitarIntegrante } from '../datos.js?v=202610132104';
+import { ROL_EQUIPO } from '../etiquetas.js?v=202610132104';
 
 // Integrantes de la iniciativa: una iniciativa puede ser de una persona o de un
 // grupo, sin líder. Cualquier integrante envía el Avance y la Consulta; su correo identifica la
 // iniciativa. Quien llenó el Registro queda como referencia. Admin y facilitador agregan (correo
 // y nombre) y quitan (con nota); quitar no borra: la persona pasa a "Quitados" con la nota.
 //   integrantes: de integrantesDe(), o null si no se pudieron cargar.
-export function seccionIntegrantes(ini, integrantes, { operador, recargar }) {
+//   otras: otras iniciativas activas del mismo grupo (excepción que autoriza el admin).
+//   admin: puede agregar como excepción a quien ya está en otra iniciativa.
+export function seccionIntegrantes(ini, integrantes, { operador, admin = false, recargar, otras = [] }) {
   const titulo = (n) => el('h2', { id: 'integrantes-titulo', text: n > 1 ? `Integrantes (${n})` : 'Integrantes' });
   const seccion = (...hijos) => el('section', { class: 'tarjeta integrantes', 'aria-labelledby': 'integrantes-titulo' }, ...hijos);
   if (!integrantes) {
@@ -25,7 +27,9 @@ export function seccionIntegrantes(ini, integrantes, { operador, recargar }) {
         g.rol === 'coordinador' ? [' ', insignia('Coordina')]
           : g.participante_id === autor ? [' ', insignia('Llenó el Registro')] : null),
       g.participante?.correo ? el('span', { class: 'integrante__correo', text: g.participante.correo }) : null,
-      g.rol_equipo ? el('span', { class: 'integrante__correo', text: `Rol en el equipo: ${ROL_EQUIPO[g.rol_equipo] ?? g.rol_equipo}` }) : null);
+      g.rol_equipo ? el('span', { class: 'integrante__correo', text: `Rol en el equipo: ${ROL_EQUIPO[g.rol_equipo] ?? g.rol_equipo}` }) : null,
+      // Agregado por el admin aunque ya estaba en otra iniciativa.
+      g.excepcion_en ? el('span', { class: 'integrante__nota texto-libre', text: `Excepción del admin (${formatoFecha(g.excepcion_en, { conHora: true })}): ${g.excepcion_nota}` }) : null);
     // El único integrante no se quita (la base lo rechaza): se desactiva la iniciativa.
     const accion = operador && activos.length > 1 ? botonQuitar(ini, g, nombre(g), recargar) : null;
     return el('li', { class: 'integrante' }, datos, accion);
@@ -38,9 +42,17 @@ export function seccionIntegrantes(ini, integrantes, { operador, recargar }) {
       ? el('p', { class: 'integrantes__equipo' }, el('strong', { text: `Equipo «${ini.equipo_nombre}»` }),
           ini.equipo_transversal ? ' · con personas de otras áreas o de la otra empresa' : null)
       : null,
-    el('p', { class: 'texto-secundario', text: activos.length > 1
-      ? 'Cualquiera de ellos puede enviar el Avance y la Consulta: su correo identifica la iniciativa.'
-      : 'Iniciativa individual. Si es de un grupo, agrega a las demás personas con su correo.' }),
+    otras.length
+      ? el('div', { class: 'mensaje mensaje--atencion' },
+          el('p', { class: 'mensaje__titulo' }, otras.length === 1 ? 'Este grupo tiene otra iniciativa: ' : 'Este grupo tiene otras iniciativas: ',
+            otras.map((o, i) => [i ? ', ' : '', el('a', { class: 'enlace', href: `#/registros/${o.codigo}` }, o.codigo), ` «${o.nombre}»`])),
+          el('p', { text: 'Lo autorizó el admin como excepción. Sus Avances no se asocian solos: llegan a Revisión para elegir a cuál van.' }))
+      : null,
+    el('p', { class: 'texto-secundario', text: otras.length
+      ? 'Cualquiera de ellos puede enviar el Avance y la Consulta.'
+      : activos.length > 1
+        ? 'Cualquiera de ellos puede enviar el Avance y la Consulta: su correo identifica la iniciativa.'
+        : 'Iniciativa individual. Si es de un grupo, agrega a las demás personas con su correo.' }),
     el('ul', { class: 'integrantes__lista' }, activos.map(fila)),
     quitados.length
       ? el('details', { class: 'desplegable' },
@@ -51,7 +63,7 @@ export function seccionIntegrantes(ini, integrantes, { operador, recargar }) {
               g.participante?.correo ? el('span', { class: 'integrante__correo', text: g.participante.correo }) : null,
               el('span', { class: 'integrante__nota texto-libre', text: `${formatoFecha(g.quitado_en, { conHora: true })}: ${g.nota || 'sin nota'}` }))))))
       : null,
-    operador ? formularioAgregar(ini, recargar) : null);
+    operador ? formularioAgregar(ini, recargar, admin) : null);
 }
 
 // "Quitar" abre en su lugar la nota obligatoria (por qué se quita) y la confirmación.
@@ -83,25 +95,57 @@ function botonQuitar(ini, g, nombre, recargar) {
 }
 
 // Agregar con correo y nombre: para un integrante que faltó en la lista o un correo mal escrito.
-function formularioAgregar(ini, recargar) {
+// Si ya está en otra iniciativa, la base lo rechaza; el admin puede agregarlo como excepción con una
+// nota (máximo 5 iniciativas por persona). Sus Avances llegarán a Revisión para elegir a cuál van.
+function formularioAgregar(ini, recargar, admin) {
   const correo = el('input', { type: 'email', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'none' });
   const nombre = el('input', { type: 'text', autocomplete: 'off' });
   const boton = el('button', { type: 'submit', id: 'agregar-integrante', class: 'boton boton--principal' }, 'Agregar al grupo');
+  const notaExcepcion = el('input', { type: 'text', autocomplete: 'off' });
+  const botonExcepcion = el('button', { type: 'button', id: 'agregar-integrante-excepcion', class: 'boton boton--secundario' }, 'Agregar de todos modos (excepción)');
+  const excepcion = el('div', { class: 'mensaje mensaje--atencion', hidden: true },
+    el('p', { class: 'mensaje__titulo', text: 'Ya está en otra iniciativa' }),
+    el('p', { text: 'Como admin, puedes agregarlo como excepción: quedará en las dos (máximo 5 por persona) y sus Avances llegarán a Revisión para elegir a cuál van.' }),
+    campo('integrante-excepcion-nota', 'Por qué se autoriza', notaExcepcion, 'Queda guardado en el integrante con tu nombre y la fecha.'),
+    el('div', { class: 'acciones' }, botonExcepcion));
   const formulario = el('form', { novalidate: true },
     el('div', { class: 'rejilla' },
       campo('integrante-correo', 'Correo', correo, 'El correo con que responde los formularios.'),
       campo('integrante-nombre', 'Nombre', nombre, 'Obligatorio si la persona todavía no está registrada.')),
-    el('div', { class: 'acciones' }, boton));
+    el('div', { class: 'acciones' }, boton),
+    admin ? excepcion : null);
+  const yaEnOtra = (err) => /ya está en la iniciativa activa/i.test(err?.message ?? '');
+  // Cambiar el correo cierra la excepción: la nota era para la persona de antes.
+  correo.addEventListener('input', () => { excepcion.hidden = true; });
   formulario.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEn(formulario, null);
+    excepcion.hidden = true;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo.value.trim())) { errorCampo(correo, 'Escribe un correo válido.'); return; }
     try {
       const res = await conBoton(boton, 'Agregando…', () => agregarIntegrante(ini.id, correo.value.trim(), nombre.value.trim()));
       avisar(`${res?.correo ?? correo.value.trim()} ahora es integrante de ${ini.codigo}. Sus Avances y Consultas llegarán a esta iniciativa.`);
       recargar();
     } catch (err) {
-      errorEn(formulario, mensajeError(err));
+      if (admin && yaEnOtra(err)) {
+        excepcion.hidden = false;
+        notaExcepcion.focus();
+      }
+      errorEn(formulario, yaEnOtra(err) && !admin
+        ? `${mensajeError(err)} Solo el admin puede agregarlo como excepción.`
+        : mensajeError(err));
+    }
+  });
+  botonExcepcion.addEventListener('click', async () => {
+    errorEn(excepcion, null);
+    if (!notaExcepcion.value.trim()) { errorCampo(notaExcepcion, 'Escribe por qué se autoriza.'); return; }
+    try {
+      const res = await conBoton(botonExcepcion, 'Agregando…',
+        () => agregarIntegranteExcepcion(ini.id, correo.value.trim(), nombre.value.trim(), notaExcepcion.value.trim()));
+      avisar(`${res?.correo ?? correo.value.trim()} ahora también es integrante de ${ini.codigo} (excepción). Sus Avances llegarán a Revisión para elegir a cuál van.`);
+      recargar();
+    } catch (err) {
+      errorEn(excepcion, mensajeError(err));
     }
   });
   return el('details', { class: 'desplegable', id: 'integrante-agregar' },

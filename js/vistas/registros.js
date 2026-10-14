@@ -1,10 +1,10 @@
-import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610131530';
-import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610131530';
+import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610132104';
+import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610132104';
 import {
   textoHerramienta, textoTipo, caminoArea, unidadesIniciativa, opcionesArea, motivos, SEMAFOROS, BLOQUEOS,
   esRegistroV3, escritoPorNivel, NIVELES_V3, unidadPorClasificar, textoEmpresa,
-} from '../etiquetas.js?v=202610131530';
-import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610131530';
+} from '../etiquetas.js?v=202610132104';
+import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610132104';
 
 // Filtros de la lista: se conservan mientras dura la sesión en esta pestaña (al volver del detalle).
 const FILTROS_INICIALES = { texto: '', empresa: '', area: '', herramienta: '', tipo: '', estado: '', atencion: '', datos: '', bloqueo: '', mvp: false, desactivadas: false };

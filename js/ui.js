@@ -1,4 +1,4 @@
-import { ZONA_HORARIA } from './config.js?v=202610131530';
+import { ZONA_HORARIA } from './config.js?v=202610132104';
 
 // Crea un elemento. El texto siempre entra como textContent (nunca innerHTML):
 // lo que escriben los participantes se muestra tal cual, sin interpretarse como HTML.

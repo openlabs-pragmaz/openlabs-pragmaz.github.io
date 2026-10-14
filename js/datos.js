@@ -1,4 +1,4 @@
-import { supabase } from './cliente.js?v=202610131530';
+import { supabase } from './cliente.js?v=202610132104';
 
 // Consultas a Supabase. Cada consulta devuelve solo lo que RLS deja ver a quien tiene la sesión:
 // aquí no se filtra por rol ni por empresa.
@@ -204,15 +204,39 @@ export async function ayudasDe(iniciativaId) {
 export async function integrantesDe(iniciativaId) {
   const { data, error } = await supabase
     .from('integrante')
-    .select(`participante_id, nombre, activo, agregado_en, quitado_en, nota, rol, rol_equipo, estado,
+    .select(`participante_id, nombre, activo, agregado_en, quitado_en, nota, rol, rol_equipo, estado, excepcion_en, excepcion_nota,
              participante:participante!integrante_participante_id_fkey(id, nombre, correo)`)
     .eq('iniciativa_id', iniciativaId).order('agregado_en');
   if (error) throw error;
   return data;
 }
 
+// Otras iniciativas activas de los integrantes activos de una (excepción que autoriza el admin:
+// el mismo grupo con varias ideas). Solo las que la sesión puede ver.
+export async function otrasIniciativasDelGrupo(iniciativaId, integrantes) {
+  const ids = (integrantes ?? []).filter((g) => g.activo).map((g) => g.participante_id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from('integrante')
+    .select('iniciativa:iniciativa!integrante_iniciativa_id_fkey!inner(id, codigo, nombre, activa)')
+    .eq('activo', true).eq('iniciativa.activa', true).in('participante_id', ids).neq('iniciativa_id', iniciativaId);
+  if (error) throw error;
+  const unicas = new Map(data.map((g) => [g.iniciativa.id, g.iniciativa]));
+  return [...unicas.values()].sort((a, b) => a.codigo.localeCompare(b.codigo));
+}
+
 // Admin y facilitador. Si el correo no es de un participante, se crea con el nombre (obligatorio
-// en ese caso), la empresa y el área de la iniciativa. Una persona solo está en un grupo activo.
+// en ese caso), la empresa y el área de la iniciativa. Una persona solo está en un grupo activo,
+// salvo en las iniciativas creadas aparte por el admin (máximo 5).
+// Solo el admin: agrega a alguien que ya está en otra iniciativa, con una nota (excepción; máximo 5).
+export async function agregarIntegranteExcepcion(iniciativaId, correo, nombre, nota) {
+  const { data, error } = await supabase.rpc('agregar_integrante_excepcion', {
+    p_iniciativa_id: iniciativaId, p_correo: correo, p_nombre: nombre || null, p_nota: nota,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function agregarIntegrante(iniciativaId, correo, nombre) {
   const { data, error } = await supabase.rpc('agregar_integrante', {
     p_iniciativa_id: iniciativaId, p_correo: correo, p_nombre: nombre || null,
@@ -287,7 +311,8 @@ export async function crearArea({ empresaId, nombre, nivel, padreId }) {
 const SELECT_RESPUESTA = `
   id, formulario, id_respuesta, enviado_en, correo, codigo_iniciativa, respuestas,
   estado_procesamiento, motivo_revision, procesado_en, resuelto_por, resuelto_en, nota_resolucion,
-  empresa_corregida_id, empresa_corregida_en, reemplaza_iniciativa_id, reemplazo_en`;
+  empresa_corregida_id, empresa_corregida_en, reemplaza_iniciativa_id, reemplazo_en,
+  aparte_autorizado_en, aparte_nota, descartado_en, iniciativa_elegida_id, elegida_en`;
 
 // Respuestas pendientes o en revisión, con lo que se creó a partir de cada una.
 export async function listarRevisiones() {
@@ -450,6 +475,28 @@ export async function reintentar(id) {
 // código y seguimiento). Queda en revisión para resolverlo con una nota.
 export async function reemplazarConRegistro(id) {
   const { data, error } = await supabase.rpc('reemplazar_con_registro', { p_id: id });
+  if (error) throw error;
+  return data;
+}
+
+// Registro con integrantes en otra iniciativa: no se cierra con "Resolver". Descartar (admin o
+// facilitador, con nota) no crea ni cambia nada; crear aparte (solo el admin, con nota) crea su
+// iniciativa y sus integrantes quedan en varias (máximo 5; devuelve { codigo, estado, motivo }).
+export async function descartarRegistro(id, nota) {
+  const { data, error } = await supabase.rpc('descartar_registro', { p_id: id, p_nota: nota });
+  if (error) throw error;
+  return data;
+}
+
+export async function crearIniciativaAparte(id, nota) {
+  const { data, error } = await supabase.rpc('crear_iniciativa_aparte', { p_id: id, p_nota: nota });
+  if (error) throw error;
+  return data;
+}
+
+// Avance de alguien con varias iniciativas: se guarda en la elegida y se procesa.
+export async function asociarAvance(id, iniciativaId) {
+  const { data, error } = await supabase.rpc('asociar_avance', { p_id: id, p_iniciativa_id: iniciativaId });
   if (error) throw error;
   return data;
 }

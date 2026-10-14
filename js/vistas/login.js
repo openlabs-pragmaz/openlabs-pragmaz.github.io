@@ -1,5 +1,5 @@
-import { el, pintar, mensajeError } from '../ui.js?v=202610131530';
-import { iniciarSesion } from '../sesion.js?v=202610131530';
+import { el, pintar, mensajeError } from '../ui.js?v=202610132104';
+import { iniciarSesion } from '../sesion.js?v=202610132104';
 
 export function vistaLogin(contenedor, { alEntrar, aviso = null }) {
   const error = el('p', { class: 'mensaje mensaje--error', id: 'login-error', role: 'alert', hidden: true });

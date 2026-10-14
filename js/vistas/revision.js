@@ -1,15 +1,15 @@
 import {
   el, pintar, repintar, enfocar, insignia, formatoFecha, mensajeError, avisar, campo, selector,
   conBoton, errorCampo, errorEn, conteoRevision, turnoActual, vigente,
-} from '../ui.js?v=202610131530';
+} from '../ui.js?v=202610132104';
 import {
   cargarCatalogos, listarRevisiones, listarResueltas, iniciativasEnRevision, iniciativasDePersona,
   nombresEquipo, reintentar, resolverRevision, reabrirRevision, estadoRespuesta, actualizarIniciativa, asociarTicket,
   corregirEmpresaRegistro, corregirPuntoAvance, reemplazarConRegistro, obtenerIniciativa, agregarIntegrante,
-  gruposActivosDe, quitarIntegrante, integrantesDe,
-} from '../datos.js?v=202610131530';
-import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610131530';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610131530';
+  gruposActivosDe, quitarIntegrante, integrantesDe, descartarRegistro, crearIniciativaAparte, asociarAvance,
+} from '../datos.js?v=202610132104';
+import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610132104';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610132104';
 
 let pestana = 'registro';
 const LIMITE_RESUELTAS = 50;
@@ -70,7 +70,7 @@ export async function vistaRevision(contenedor, perfil, { recarga = false, enfoc
       ? null
       : el('p', { class: 'vacio vacio--al-dia', text: VACIO[formulario] }),
     lista.length
-      ? el('ol', { class: 'lista-tarjetas' }, lista.map((r) => el('li', {}, tarjetaRespuesta(r, cat, recargar, quedan))))
+      ? el('ol', { class: 'lista-tarjetas' }, lista.map((r) => el('li', {}, tarjetaRespuesta(r, cat, recargar, quedan, perfil.rol === 'admin'))))
       : null,
     extra);
   const deRegistro = deFormulario('registro');
@@ -202,7 +202,7 @@ const textoQuedan = (n) => (n > 0 ? `Quedan ${n}.` : 'No queda ninguna pendiente
 // calza, el primero que escribió la base.
 const PRIORIDAD = [
   /empresa/i,
-  /otras? iniciativas?|ya están en la iniciativa|envío repetido|ya tiene|reemplaz/i,
+  /otras? iniciativas?|ya están en la iniciativa|envío repetido|ya tiene|reemplaz|tiene varias iniciativas/i,
   /no está en ningún grupo|no tiene registro/i,
   /área/i,
   /código/i,
@@ -254,7 +254,15 @@ function respuestasCrudas(r, id) {
 function loCreado(r) {
   // Sin el código: ya está en la cabecera de la tarjeta.
   if (r.iniciativa) {
+    // Excepción del admin: sus integrantes ya estaban en otra iniciativa.
+    if (r.aparte_autorizado_en) {
+      return el('p', {}, 'Creó la iniciativa aparte ', el('strong', { text: r.iniciativa.nombre }),
+        ` (autorizada por el admin el ${formatoFecha(r.aparte_autorizado_en, { conHora: true })}: ${r.aparte_nota}).`);
+    }
     return el('p', {}, 'Creó la iniciativa ', el('strong', { text: r.iniciativa.nombre }));
+  }
+  if (r.descartado_en) {
+    return el('p', {}, el('strong', { text: 'Registro descartado' }), ': no creó ni cambió ninguna iniciativa.');
   }
   // Una iniciativa por persona: un segundo Registro no crea otra.
   if (r.formulario === 'registro' && r.reemplaza_iniciativa_id) {
@@ -371,7 +379,7 @@ function corregirPunto(r, id, ini, cat, recargarAqui) {
     formulario);
 }
 
-function tarjetaRespuesta(r, cat, recargar, quedan) {
+function tarjetaRespuesta(r, cat, recargar, quedan, esAdmin) {
   const id = `r${r.id}`;
   let articulo;
   const recargarAqui = () => recargar({ foco: posicion(articulo) });
@@ -402,11 +410,18 @@ function tarjetaRespuesta(r, cat, recargar, quedan) {
   if (r.formulario === 'registro' && !r.iniciativa && r.codigo_iniciativa && !r.reemplaza_iniciativa_id) {
     partes.push(reemplazarDatos(r, id, recargarAqui));
   }
-  // Integrantes que ya están en otro grupo activo (una iniciativa por persona): se pueden quitar
-  // de su grupo anterior y volver a procesar el Registro.
-  if (r.formulario === 'registro' && !r.iniciativa && !r.reemplaza_iniciativa_id
-      && /otras iniciativas|ya están en la iniciativa|envío repetido|ya tiene/i.test(r.motivo_revision ?? '')) {
+  // Integrantes que ya están en otro grupo activo (una iniciativa por persona): no se cierra con
+  // "Resolver". Se pueden quitar de su grupo anterior y volver a procesar, descartar el Registro o,
+  // solo el admin, crearlo como iniciativa aparte.
+  const choque = r.formulario === 'registro' && !r.iniciativa && !r.reemplaza_iniciativa_id
+    && /otras iniciativas|ya están en la iniciativa|envío repetido|ya tiene/i.test(r.motivo_revision ?? '');
+  if (choque) {
     partes.push(quitarDeGrupoAnterior(r, id, quedan, recargarAqui));
+    partes.push(descartarOAparte(r, id, quedan, esAdmin, recargarAqui));
+  }
+  // Avance de alguien con varias iniciativas: se elige a cuál va.
+  if (r.formulario === 'avance' && !r.bitacora && /tiene varias iniciativas/i.test(r.motivo_revision ?? '')) {
+    partes.push(elegirIniciativaAvance(r, id, quedan, recargarAqui));
   }
   partes.push(respuestasCrudas(r, id));
   if (editable) {
@@ -434,7 +449,7 @@ function tarjetaRespuesta(r, cat, recargar, quedan) {
       && /Empresa ("Otra" o )?no reconocida|Empresa corregida/i.test(r.motivo_revision ?? '')) {
     partes.push(corregirEmpresa(r, id, cat, recargarAqui));
   }
-  partes.push(resolver(r, id, quedan, () => posicion(articulo), recargar));
+  partes.push(resolver(r, id, quedan, () => posicion(articulo), recargar, choque));
 
   articulo = el('article', {
     class: 'tarjeta tarjeta--revision', id: `tarjeta-${id}`, 'data-iniciativa': codigoDe(r), 'aria-labelledby': `${id}-titulo`,
@@ -445,8 +460,8 @@ function tarjetaRespuesta(r, cat, recargar, quedan) {
 // Una iniciativa por persona: quien ya tiene una y vuelve a registrarse. Lado a
 // lado, lo que tiene y lo que trae este Registro; "Reemplazar" pasa los datos nuevos a su
 // iniciativa (mismo código, seguimiento e integrantes; el estado no cambia y la herramienta solo
-// se pone si faltaba; el área, si el Registro trae una de la lista). Descartar = resolver
-// con una nota.
+// se pone si faltaba; el área, si el Registro trae una de la lista). Descartar o crear aparte:
+// descartarOAparte().
 function reemplazarDatos(r, id, recargarAqui) {
   const actual = r.iniciativaExistente;
   const codigo = actual?.codigo ?? r.codigo_iniciativa.trim().toUpperCase();
@@ -458,11 +473,11 @@ function reemplazarDatos(r, id, recargarAqui) {
   ];
   const boton = el('button', { type: 'button', id: `${id}-reemplazar`, class: 'boton boton--secundario' }, `Reemplazar los datos de ${codigo}`);
   const zona = el('div', { class: 'mensaje mensaje--atencion' },
-    el('p', { class: 'mensaje__titulo', text: `Ya tiene ${codigo}: solo puede tener una iniciativa` }),
+    el('p', { class: 'mensaje__titulo', text: `Ya tiene ${codigo}` }),
     el('dl', { class: 'datos' },
       fila('Nombre', actual?.nombre, nuevo.iniciativa_nombre),
       fila('Descripción', actual?.situacion_antes, nuevo.situacion_antes)),
-    el('p', { text: `Si el grupo quiere cambiar su iniciativa, "Reemplazar" pone estos datos en ${codigo}: mismo código, mismo seguimiento y mismos integrantes. El estado no cambia y la herramienta tampoco, salvo que aún no tuviera: entonces toma la de este Registro. La unidad cambia solo si este Registro trae una de la lista. Si es un envío repetido o no corresponde, resuélvela con una nota y no cambia nada.` }),
+    el('p', { text: `Si el grupo quiere cambiar su iniciativa, "Reemplazar" pone estos datos en ${codigo}: mismo código, mismo seguimiento y mismos integrantes. El estado no cambia y la herramienta tampoco, salvo que aún no tuviera: entonces toma la de este Registro. La unidad cambia solo si este Registro trae una de la lista. Si es un envío repetido o no corresponde, descártalo más abajo y no cambia nada.` }),
     el('div', { class: 'acciones' }, boton));
   boton.addEventListener('click', async () => {
     errorEn(zona, null);
@@ -481,7 +496,7 @@ function reemplazarDatos(r, id, recargarAqui) {
 // Una iniciativa activa por persona : si integrantes de este
 // Registro ya están en otro grupo, la base no crea la iniciativa nueva. Si en realidad cambiaron de
 // grupo, aquí se los quita del anterior (con una nota) y el Registro se vuelve a procesar. Si fue un
-// error del Registro, se resuelve con una nota y no cambia nada. El único integrante de una
+// error del Registro, se descarta con una nota y no cambia nada. El único integrante de una
 // iniciativa no se quita: primero se desactiva esa iniciativa.
 function quitarDeGrupoAnterior(r, id, quedan, recargarAqui) {
   const titulo = () => el('p', { class: 'mensaje__titulo', text: 'Integrantes que ya están en otro grupo' });
@@ -504,8 +519,8 @@ function quitarDeGrupoAnterior(r, id, quedan, recargarAqui) {
         `${c.nombre || c.correo} (${c.correo}) está en `, el('a', { class: 'enlace', href: `#/registros/${c.iniciativa.codigo}` }, c.iniciativa.codigo),
         ` «${c.iniciativa.nombre}»`, c.integrantes <= 1 ? ' — es su único integrante' : ` — grupo de ${c.integrantes}`))),
       unicos.length
-        ? el('p', { text: `${unicos.map((c) => c.iniciativa.codigo).join(', ')} quedaría sin integrantes: si ya no sigue, desactívala primero desde su registro; si este Registro fue un error, resuélvelo con una nota.` })
-        : el('p', { text: 'Si cambiaron de grupo, quítalos del anterior: se guarda tu nota y el Registro se vuelve a procesar. Si este Registro fue un error, resuélvelo con una nota y no cambia nada.' }),
+        ? el('p', { text: `${unicos.map((c) => c.iniciativa.codigo).join(', ')} quedaría sin integrantes: si ya no sigue, desactívala primero desde su registro; si este Registro fue un error, descártalo.` })
+        : el('p', { text: 'Si cambiaron de grupo, quítalos del anterior: se guarda tu nota y el Registro se vuelve a procesar. Si este Registro fue un error, descártalo y no cambia nada.' }),
       unicos.length ? null : campo(`${id}-quitar-nota`, 'Por qué se quitan de su grupo anterior', nota, 'Queda guardada en cada integrante quitado.'),
       unicos.length ? null : el('div', { class: 'acciones' }, boton));
     formulario.addEventListener('submit', async (e) => {
@@ -532,6 +547,98 @@ function quitarDeGrupoAnterior(r, id, quedan, recargarAqui) {
     zona.replaceChildren(titulo(), el('p', { class: 'mensaje mensaje--error', role: 'alert', text: mensajeError(e) }));
   });
   return zona;
+}
+
+// Registro con integrantes en otra iniciativa que no es un cambio de grupo: se descarta con una nota
+// (admin o facilitador) o, si el grupo de verdad tiene otra idea, el admin lo crea como iniciativa
+// aparte (excepción; máximo 5 por persona). Las dos piden una nota, que queda guardada.
+function descartarOAparte(r, id, quedan, esAdmin, recargarAqui) {
+  const formularioNota = ({ sufijo, etiqueta, ayuda, textoBoton, clase, confirmar, accion }) => {
+    const nota = el('textarea', { rows: 2, required: true });
+    const boton = el('button', { type: 'submit', id: `${id}-${sufijo}`, class: `boton ${clase}` }, textoBoton);
+    const formulario = el('form', { class: 'resolver__nota', novalidate: true },
+      ayuda, campo(`${id}-${sufijo}-nota`, etiqueta, nota, 'Queda guardada con tu nombre y la fecha.'),
+      el('div', { class: 'acciones' }, boton));
+    formulario.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEn(formulario, null);
+      if (!nota.value.trim()) { errorCampo(nota, 'Escribe la nota: es obligatoria.'); return; }
+      if (!window.confirm(confirmar)) return;
+      try {
+        await conBoton(boton, 'Guardando…', () => accion(nota.value.trim()));
+        recargarAqui();
+      } catch (err) {
+        errorEn(formulario, mensajeError(err));
+      }
+    });
+    return formulario;
+  };
+
+  const descartar = formularioNota({
+    sufijo: 'descartar', etiqueta: 'Por qué se descarta', textoBoton: 'Descartar este Registro', clase: 'boton--secundario',
+    ayuda: el('p', { class: 'texto-secundario', text: 'Para un envío repetido o un Registro que no corresponde: no crea ni cambia ninguna iniciativa. La respuesta queda guardada tal como llegó.' }),
+    confirmar: '¿Descartar este Registro?\n\nNo se crea ni cambia ninguna iniciativa.',
+    accion: async (nota) => {
+      await descartarRegistro(r.id, nota);
+      avisar(`Registro descartado. ${textoQuedan(quedan)}`);
+    },
+  });
+  const aparte = esAdmin
+    ? formularioNota({
+        sufijo: 'aparte', etiqueta: 'Por qué se autoriza', textoBoton: 'Crear como iniciativa aparte', clase: 'boton--secundario',
+        ayuda: el('p', { class: 'texto-secundario', text: 'Excepción: crea una iniciativa nueva con este Registro y sus integrantes quedan también en la que ya tienen (máximo 5 por persona). Sus Avances ya no se asocian solos: llegarán a Revisión para elegir a cuál van.' }),
+        confirmar: '¿Crear una iniciativa aparte con este Registro?\n\nSus integrantes quedarán en más de una iniciativa.',
+        accion: async (nota) => {
+          const res = await crearIniciativaAparte(r.id, nota);
+          avisar(res?.codigo
+            ? `Se creó ${res.codigo}. ${res.estado === 'procesado' ? textoQuedan(quedan) : 'Revisa lo que falta y resuélvelo con una nota.'}`
+            : `No se creó la iniciativa: ${motivos(res?.motivo).join(' · ') || 'revisa el motivo'}.`, res?.codigo ? 'exito' : 'info');
+        },
+      })
+    : el('p', { class: 'texto-secundario', text: 'Si el grupo de verdad tiene otra idea, solo el admin puede crearla como iniciativa aparte.' });
+
+  return el('div', { class: 'tarjeta tarjeta--plana' },
+    el('h3', { text: 'Cerrar este Registro' }),
+    el('p', { class: 'texto-secundario', text: 'Sus integrantes ya están en otra iniciativa: no se cierra con "Resolver". Elige qué pasa con él.' }),
+    el('details', { class: 'desplegable', id: `${id}-descartar-zona` }, el('summary', { text: 'Descartar este Registro' }), descartar),
+    esAdmin
+      ? el('details', { class: 'desplegable', id: `${id}-aparte-zona` }, el('summary', { text: 'Crear como iniciativa aparte (excepción)' }), aparte)
+      : aparte);
+}
+
+// Avance de alguien que está en varias iniciativas (excepción del admin): no se adivina. Se elige
+// entre las suyas, en el orden que dejó la base (primero las de nombre más parecido al que escribió).
+function elegirIniciativaAvance(r, id, quedan, recargarAqui) {
+  const suyas = [...(r.motivo_revision ?? '').matchAll(/(INI-\d+) «([^»]*)»/g)].map((m) => ({ codigo: m[1], nombre: m[2] }));
+  const eleccion = selector([
+    { valor: '', texto: 'Elige la iniciativa' },
+    ...suyas.map((x, i) => ({ valor: x.codigo, texto: `${x.codigo} — ${x.nombre}${i === 0 ? ' (nombre más parecido)' : ''}` })),
+  ], '');
+  const boton = el('button', { type: 'submit', id: `${id}-asociar-avance`, class: 'boton boton--principal' }, 'Asociar a esta iniciativa');
+  const formulario = el('form', { class: 'resolver__nota', novalidate: true },
+    el('p', { class: 'texto-secundario' }, 'Escribió como nombre: ', el('strong', { text: r.respuestas?.nombre_iniciativa || 'nada' }),
+      '. Compáralo con lo que avanzó (en "Ver la respuesta tal como llegó") y elige su iniciativa.'),
+    campo(`${id}-avance-iniciativa`, 'Iniciativa de este Avance', eleccion),
+    el('div', { class: 'acciones' }, boton));
+  formulario.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEn(formulario, null);
+    if (!eleccion.value) { errorCampo(eleccion, 'Elige la iniciativa a la que va este Avance.'); return; }
+    try {
+      const res = await conBoton(boton, 'Asociando…', async () => {
+        const ini = await obtenerIniciativa(eleccion.value);
+        if (!ini) throw Object.assign(new Error(`No hay una iniciativa ${eleccion.value} a tu alcance.`), { code: 'P0001' });
+        return asociarAvance(r.id, ini.id);
+      });
+      avisar(res?.estado === 'procesado'
+        ? `Avance guardado en ${res.codigo}. ${textoQuedan(quedan)}`
+        : `Avance guardado en ${res?.codigo}; sigue en revisión por otro punto.`, res?.estado === 'procesado' ? 'exito' : 'info');
+      recargarAqui();
+    } catch (err) {
+      errorEn(formulario, mensajeError(err));
+    }
+  });
+  return el('div', { class: 'tarjeta tarjeta--plana' }, el('h3', { text: 'Elegir la iniciativa de este Avance' }), formulario);
 }
 
 // La empresa escrita no se reconoció y la persona no era participante: se elige la correcta y
@@ -622,12 +729,14 @@ function agregarAlGrupo(r, id, quedan, recargarAqui) {
 
 // Resolver va plegado: un botón abre la nota en su lugar. Así cada tarjeta muestra primero el
 // motivo y lo que llegó, y la cola se recorre rápido.
-function resolver(r, id, quedan, dondeEsta, recargar) {
+// choque: Registro con integrantes en otra iniciativa; no se resuelve (la base tampoco lo deja):
+// se cierra con Reemplazar, Descartar o Crear aparte. Solo queda "Volver a procesar".
+function resolver(r, id, quedan, dondeEsta, recargar, choque = false) {
   const abrir = el('button', {
     type: 'button', id: `${id}-abrir`, class: 'boton boton--principal', 'aria-expanded': 'false', 'aria-controls': `${id}-resolver`,
   }, 'Resolver…');
   const reintento = el('button', { type: 'button', id: `${id}-reintentar`, class: 'boton boton--texto' }, 'Volver a procesar');
-  const inicio = el('div', { class: 'acciones' }, abrir, reintento);
+  const inicio = el('div', { class: 'acciones' }, choque ? null : abrir, reintento);
 
   const nota = el('textarea', { rows: 3, required: true });
   const marcar = el('button', { type: 'submit', id: `${id}-marcar`, class: 'boton boton--principal' }, 'Marcar como resuelta');

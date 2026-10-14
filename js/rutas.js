@@ -1,11 +1,11 @@
-import { el, pintar, nuevoTurno } from './ui.js?v=202610131530';
-import { vistaInicio } from './vistas/inicio.js?v=202610131530';
-import { vistaClave } from './vistas/clave.js?v=202610131530';
-import { vistaRegistros } from './vistas/registros.js?v=202610131530';
-import { vistaRegistro } from './vistas/registro.js?v=202610131530';
-import { vistaRevision } from './vistas/revision.js?v=202610131530';
-import { vistaConsultas } from './vistas/consultas.js?v=202610131530';
-import { vistaProgreso } from './vistas/progreso.js?v=202610131530';
+import { el, pintar, nuevoTurno } from './ui.js?v=202610132104';
+import { vistaInicio } from './vistas/inicio.js?v=202610132104';
+import { vistaClave } from './vistas/clave.js?v=202610132104';
+import { vistaRegistros } from './vistas/registros.js?v=202610132104';
+import { vistaRegistro } from './vistas/registro.js?v=202610132104';
+import { vistaRevision } from './vistas/revision.js?v=202610132104';
+import { vistaConsultas } from './vistas/consultas.js?v=202610132104';
+import { vistaProgreso } from './vistas/progreso.js?v=202610132104';
 
 const TODOS = ['admin', 'facilitador', 'soporte', 'observador'];
 const OPERADORES = ['admin', 'facilitador'];

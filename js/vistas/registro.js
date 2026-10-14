@@ -1,18 +1,18 @@
 import {
   el, pintar, repintar, insignia, formatoFecha, mensajeError, normalizar, turnoActual, vigente, conBoton, errorEn, avisar,
-} from '../ui.js?v=202610131530';
+} from '../ui.js?v=202610132104';
 import {
   cargarCatalogos, obtenerIniciativa, respuestasPendientesDe, consultasSinResponderDe, bitacoraDe, ayudasDe, seleccionarMvp,
-  integrantesDe, cambiosEstadoDatos, nombresEquipo,
-} from '../datos.js?v=202610131530';
+  integrantesDe, cambiosEstadoDatos, nombresEquipo, otrasIniciativasDelGrupo,
+} from '../datos.js?v=202610132104';
 import {
   FORMULARIOS, textoHerramienta, textoTipo, textoArea, textoMedida, motivos,
   MODALIDAD, FRECUENCIA, esRegistroV3, escritoPorNivel, NIVELES_V3, textoEmpresa,
-} from '../etiquetas.js?v=202610131530';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610131530';
-import { seccionSeguimiento } from './seguimiento.js?v=202610131530';
-import { seccionIntegrantes } from './integrantes.js?v=202610131530';
-import { seccionUsoDatos } from './semaforo.js?v=202610131530';
+} from '../etiquetas.js?v=202610132104';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610132104';
+import { seccionSeguimiento } from './seguimiento.js?v=202610132104';
+import { seccionIntegrantes } from './integrantes.js?v=202610132104';
+import { seccionUsoDatos } from './semaforo.js?v=202610132104';
 
 const esOperador = (perfil) => perfil.rol === 'admin' || perfil.rol === 'facilitador';
 const gestionaTickets = (perfil) => esOperador(perfil) || perfil.rol === 'soporte';
@@ -67,6 +67,9 @@ export async function vistaRegistro(contenedor, perfil, codigo, { recarga = fals
     conSemaforo ? cambiosEstadoDatos(ini.id).catch(() => null) : [],
     conSemaforo ? nombresEquipo().catch(() => new Map()) : new Map(),
   ]);
+  if (!vigente(turno)) return;
+  // El mismo grupo en otras iniciativas (excepción del admin). Si falla, simplemente no se avisa.
+  const otras = await otrasIniciativasDelGrupo(ini.id, integrantes).catch(() => []);
   if (!vigente(turno)) return;
   // Quién envió cada Avance (en un grupo, cualquiera de los integrantes).
   const nombres = new Map((integrantes ?? []).map((g) => [g.participante_id, g.nombre || g.participante?.nombre]));
@@ -157,7 +160,7 @@ export async function vistaRegistro(contenedor, perfil, codigo, { recarga = fals
       ]),
     ),
     conSemaforo ? seccionUsoDatos(ini, cambiosColor, nombresQuien, { recargar, entradas: seguimiento.entradas ?? [] }) : null,
-    seccionIntegrantes(ini, integrantes, { operador: esOperador(perfil), recargar }),
+    seccionIntegrantes(ini, integrantes, { operador: esOperador(perfil), admin: perfil.rol === 'admin', recargar, otras }),
     seccion('Lo que escribió', [
       ['Describe tu iniciativa y qué problema resuelve', ini.situacion_antes],
       // Solo lo trae la versión anterior del formulario: si está vacío, no se muestra.
