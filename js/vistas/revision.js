@@ -1,15 +1,15 @@
 import {
   el, pintar, repintar, enfocar, insignia, formatoFecha, mensajeError, avisar, campo, selector,
   conBoton, errorCampo, errorEn, conteoRevision, turnoActual, vigente,
-} from '../ui.js?v=202610132104';
+} from '../ui.js?v=202610151749';
 import {
   cargarCatalogos, listarRevisiones, listarResueltas, iniciativasEnRevision, iniciativasDePersona,
   nombresEquipo, reintentar, resolverRevision, reabrirRevision, estadoRespuesta, actualizarIniciativa, asociarTicket,
   corregirEmpresaRegistro, corregirPuntoAvance, reemplazarConRegistro, obtenerIniciativa, agregarIntegrante,
   gruposActivosDe, quitarIntegrante, integrantesDe, descartarRegistro, crearIniciativaAparte, asociarAvance,
-} from '../datos.js?v=202610132104';
-import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610132104';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610132104';
+} from '../datos.js?v=202610151749';
+import { FORMULARIOS, paresRespuesta, motivos, estadoConsulta } from '../etiquetas.js?v=202610151749';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610151749';
 
 let pestana = 'registro';
 const LIMITE_RESUELTAS = 50;
@@ -246,6 +246,8 @@ function respuestasCrudas(r, id) {
   const pares = paresRespuesta(r.formulario, r.respuestas);
   return el('details', { class: 'desplegable', id: `${id}-respuesta` },
     el('summary', { text: 'Ver la respuesta tal como llegó' }),
+    // Google guarda el correo de quien envía aparte de las preguntas: se muestra primero para compararlo.
+    el('p', {}, 'Correo de quien envió (verificado por Google): ', el('strong', { text: r.correo || '(sin correo)' })),
     pares
       ? el('dl', { class: 'datos datos--respuesta' }, pares.flatMap(([p, v]) => [el('dt', { text: p }), el('dd', { class: 'texto-libre', text: v })]))
       : el('pre', { class: 'texto-libre', text: JSON.stringify(r.respuestas, null, 2) }));
@@ -265,6 +267,12 @@ function loCreado(r) {
     return el('p', {}, el('strong', { text: 'Registro descartado' }), ': no creó ni cambió ninguna iniciativa.');
   }
   // Una iniciativa por persona: un segundo Registro no crea otra.
+  // Se pidió reemplazar pero la base no lo aplicó (por ejemplo, alguien del Registro ya está en otra
+  // iniciativa): la iniciativa no cambió.
+  if (r.formulario === 'registro' && r.reemplaza_iniciativa_id && !r.reemplazo_aplicado_en) {
+    return el('p', {}, 'Se intentó reemplazar los datos de ', el('strong', { text: r.iniciativaExistente?.nombre ?? r.codigo_iniciativa }),
+      ` (${formatoFecha(r.reemplazo_en, { conHora: true })}), pero no se aplicó: la iniciativa no cambió. Mira el motivo; si no corresponde, descarta este Registro.`);
+  }
   if (r.formulario === 'registro' && r.reemplaza_iniciativa_id) {
     return el('p', {}, 'Reemplazó los datos de su iniciativa ', el('strong', { text: r.iniciativaExistente?.nombre ?? r.codigo_iniciativa }),
       ` (${formatoFecha(r.reemplazo_en, { conHora: true })}). Los datos anteriores siguen en su primer Registro. Revisa y resuélvela con una nota.`);
@@ -413,11 +421,16 @@ function tarjetaRespuesta(r, cat, recargar, quedan, esAdmin) {
   // Integrantes que ya están en otro grupo activo (una iniciativa por persona): no se cierra con
   // "Resolver". Se pueden quitar de su grupo anterior y volver a procesar, descartar el Registro o,
   // solo el admin, crearlo como iniciativa aparte.
+  const reemplazoFallido = r.formulario === 'registro' && r.reemplaza_iniciativa_id && !r.reemplazo_aplicado_en;
   const choque = r.formulario === 'registro' && !r.iniciativa && !r.reemplaza_iniciativa_id
     && /otras iniciativas|ya están en la iniciativa|envío repetido|ya tiene/i.test(r.motivo_revision ?? '');
   if (choque) {
     partes.push(quitarDeGrupoAnterior(r, id, quedan, recargarAqui));
     partes.push(descartarOAparte(r, id, quedan, esAdmin, recargarAqui));
+  } else if (reemplazoFallido) {
+    // Reemplazo que no se aplicó: no se cierra con "Resolver" (la base lo rechaza) y volver a
+    // procesarlo intentaría lo mismo. Queda descartarlo; "aparte" también reintentaría el reemplazo.
+    partes.push(descartarOAparte(r, id, quedan, false, recargarAqui));
   }
   // Avance de alguien con varias iniciativas: se elige a cuál va.
   if (r.formulario === 'avance' && !r.bitacora && /tiene varias iniciativas/i.test(r.motivo_revision ?? '')) {
@@ -449,7 +462,7 @@ function tarjetaRespuesta(r, cat, recargar, quedan, esAdmin) {
       && /Empresa ("Otra" o )?no reconocida|Empresa corregida/i.test(r.motivo_revision ?? '')) {
     partes.push(corregirEmpresa(r, id, cat, recargarAqui));
   }
-  partes.push(resolver(r, id, quedan, () => posicion(articulo), recargar, choque));
+  partes.push(resolver(r, id, quedan, () => posicion(articulo), recargar, choque || reemplazoFallido));
 
   articulo = el('article', {
     class: 'tarjeta tarjeta--revision', id: `tarjeta-${id}`, 'data-iniciativa': codigoDe(r), 'aria-labelledby': `${id}-titulo`,
@@ -477,8 +490,23 @@ function reemplazarDatos(r, id, recargarAqui) {
     el('dl', { class: 'datos' },
       fila('Nombre', actual?.nombre, nuevo.iniciativa_nombre),
       fila('Descripción', actual?.situacion_antes, nuevo.situacion_antes)),
-    el('p', { text: `Si el grupo quiere cambiar su iniciativa, "Reemplazar" pone estos datos en ${codigo}: mismo código, mismo seguimiento y mismos integrantes. El estado no cambia y la herramienta tampoco, salvo que aún no tuviera: entonces toma la de este Registro. La unidad cambia solo si este Registro trae una de la lista. Si es un envío repetido o no corresponde, descártalo más abajo y no cambia nada.` }),
+    el('p', { text: `Si el grupo quiere cambiar su iniciativa, "Reemplazar" pone estos datos en ${codigo}: mismo código y mismo seguimiento; entran las personas nuevas que trae y quien lo envió pasa a coordinar. Si alguien del Registro ya está en otra iniciativa, no se aplica. El estado no cambia y la herramienta tampoco, salvo que aún no tuviera: entonces toma la de este Registro. La unidad cambia solo si este Registro trae una de la lista. Si es un envío repetido o no corresponde, descártalo más abajo y no cambia nada.` }),
     el('div', { class: 'acciones' }, boton));
+  // Antes de presionar: si alguien del Registro está en otra iniciativa, el reemplazo no se aplicaría.
+  // Se revisa al abrir la tarjeta (el motivo pudo calcularse antes de que esa persona se registrara).
+  gruposDelRegistro(r).then((todos) => {
+    const otros = todos.filter((c) => c.iniciativa.codigo !== codigo);
+    if (!otros.length) return;
+    boton.hidden = true;
+    zona.append(el('div', { class: 'mensaje mensaje--error', role: 'alert' },
+      el('p', { class: 'mensaje__titulo', text: 'Así no se puede reemplazar' }),
+      el('ul', { class: 'tarjeta__motivos' }, otros.map((c) => el('li', {},
+        `${c.nombre || c.correo} ya está en `, el('a', { class: 'enlace', href: `#/registros/${c.iniciativa.codigo}` }, c.iniciativa.codigo),
+        ` «${c.iniciativa.nombre}»`))),
+      el('p', { text: `Si esa persona también va en ${codigo}: quítala de su otra iniciativa en "Integrantes que ya están en otro grupo" (más abajo), reemplaza y, si sigue en las dos, el admin la vuelve a agregar allá con "Agregar de todos modos (excepción)". Si no va en ${codigo}, descarta este Registro.` })));
+  }).catch(() => {
+    zona.append(el('p', { class: 'texto-secundario', text: 'No se pudo comprobar si alguien del Registro está en otra iniciativa: si "Reemplazar" no se aplica, mira el motivo.' }));
+  });
   boton.addEventListener('click', async () => {
     errorEn(zona, null);
     if (!window.confirm(`¿Reemplazar los datos de ${codigo} con este Registro?\n\nLos datos actuales siguen guardados en su primer Registro.`)) return;
@@ -498,16 +526,38 @@ function reemplazarDatos(r, id, recargarAqui) {
 // grupo, aquí se los quita del anterior (con una nota) y el Registro se vuelve a procesar. Si fue un
 // error del Registro, se descarta con una nota y no cambia nada. El único integrante de una
 // iniciativa no se quita: primero se desactiva esa iniciativa.
+// Correos de quien envía y de los integrantes. Registro v2: un párrafo; v3: integrante_1_correo … _5.
+function correosDeRegistro(r) {
+  const delV3 = [1, 2, 3, 4, 5].map((i) => r.respuestas?.[`integrante_${i}_correo`] ?? '').join(' ');
+  const texto = `${r.respuestas?.integrantes ?? ''} ${delV3} ${r.correo ?? ''}`.toLowerCase();
+  return [...new Set(texto.match(/[^\s@,;<>()]+@[^\s@,;<>()]+\.[^\s@,;<>()]+/g) ?? [])];
+}
+
+// Grupos activos de las personas del Registro: una consulta por tarjeta, compartida por el aviso de
+// "Reemplazar" y "Integrantes que ya están en otro grupo".
+const gruposPorRegistro = new WeakMap();
+function gruposDelRegistro(r) {
+  if (!gruposPorRegistro.has(r)) gruposPorRegistro.set(r, gruposActivosDe(correosDeRegistro(r)));
+  return gruposPorRegistro.get(r);
+}
+
+// Iniciativa que este Registro puede reemplazar (la tarjeta "Ya tiene …"): sus integrantes no son
+// "otro grupo" y no se quitan de ella.
+const codigoAReemplazar = (r) => (r.formulario === 'registro' && !r.iniciativa && r.codigo_iniciativa && !r.reemplaza_iniciativa_id
+  ? r.codigo_iniciativa.trim().toUpperCase() : null);
+
 function quitarDeGrupoAnterior(r, id, quedan, recargarAqui) {
   const titulo = () => el('p', { class: 'mensaje__titulo', text: 'Integrantes que ya están en otro grupo' });
   const zona = el('div', { class: 'mensaje mensaje--atencion' }, titulo(), el('p', { class: 'cargando', text: 'Buscando sus grupos…' }));
-  // Registro v2: un párrafo con los integrantes; v3: integrante_1_correo … integrante_5_correo.
-  const delV3 = [1, 2, 3, 4, 5].map((i) => r.respuestas?.[`integrante_${i}_correo`] ?? '').join(' ');
-  const texto = `${r.respuestas?.integrantes ?? ''} ${delV3} ${r.correo ?? ''}`.toLowerCase();
-  const correos = [...new Set(texto.match(/[^\s@,;<>()]+@[^\s@,;<>()]+\.[^\s@,;<>()]+/g) ?? [])];
-  gruposActivosDe(correos).then((choques) => {
+  const propia = codigoAReemplazar(r);
+  gruposDelRegistro(r).then((todos) => {
+    // Solo se ofrecen quienes están en otras iniciativas: quitar a los de la propia la dejaría sin el
+    // grupo que se quiere actualizar.
+    const choques = todos.filter((c) => c.iniciativa.codigo !== propia);
     if (!choques.length) {
-      zona.replaceChildren(titulo(), el('p', { text: 'Ya ninguno está en otro grupo activo: usa "Volver a procesar".' }));
+      zona.replaceChildren(titulo(), el('p', { text: propia && todos.length
+        ? `Solo están en ${propia}, la iniciativa que este Registro puede reemplazar: usa "Reemplazar los datos de ${propia}" o descártalo. Si de verdad se van de ${propia}, quítalos desde su ficha y vuelve a procesar.`
+        : 'Ya ninguno está en otro grupo activo: usa "Volver a procesar".' }));
       return;
     }
     const nota = el('input', { type: 'text' });
@@ -518,6 +568,9 @@ function quitarDeGrupoAnterior(r, id, quedan, recargarAqui) {
       el('ul', { class: 'tarjeta__motivos' }, choques.map((c) => el('li', {},
         `${c.nombre || c.correo} (${c.correo}) está en `, el('a', { class: 'enlace', href: `#/registros/${c.iniciativa.codigo}` }, c.iniciativa.codigo),
         ` «${c.iniciativa.nombre}»`, c.integrantes <= 1 ? ' — es su único integrante' : ` — grupo de ${c.integrantes}`))),
+      choques.length < todos.length
+        ? el('p', { class: 'texto-secundario', text: `Quienes ya están en ${propia} no aparecen aquí: siguen en ${propia}.` })
+        : null,
       unicos.length
         ? el('p', { text: `${unicos.map((c) => c.iniciativa.codigo).join(', ')} quedaría sin integrantes: si ya no sigue, desactívala primero desde su registro; si este Registro fue un error, descártalo.` })
         : el('p', { text: 'Si cambiaron de grupo, quítalos del anterior: se guarda tu nota y el Registro se vuelve a procesar. Si este Registro fue un error, descártalo y no cambia nada.' }),

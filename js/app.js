@@ -1,13 +1,13 @@
-import { supabase } from './cliente.js?v=202610132104';
-import { el, pintar, ROLES, mensajeError } from './ui.js?v=202610132104';
-import { cargarPerfil, perfilActual, cerrarSesion, alCerrarSesion } from './sesion.js?v=202610132104';
-import { iniciarRutas, detenerRutas } from './rutas.js?v=202610132104';
-import { olvidarCatalogos } from './datos.js?v=202610132104';
-import { olvidarFiltros } from './vistas/registros.js?v=202610132104';
-import { olvidarFiltrosConsultas } from './vistas/consultas.js?v=202610132104';
-import { olvidarFiltrosProgreso } from './vistas/progreso.js?v=202610132104';
-import { vistaLogin } from './vistas/login.js?v=202610132104';
-import { vistaClave } from './vistas/clave.js?v=202610132104';
+import { supabase } from './cliente.js?v=202610151749';
+import { el, pintar, ROLES, mensajeError } from './ui.js?v=202610151749';
+import { cargarPerfil, perfilActual, cerrarSesion, alCerrarSesion } from './sesion.js?v=202610151749';
+import { iniciarRutas, detenerRutas } from './rutas.js?v=202610151749';
+import { olvidarCatalogos } from './datos.js?v=202610151749';
+import { olvidarFiltros } from './vistas/registros.js?v=202610151749';
+import { olvidarFiltrosConsultas } from './vistas/consultas.js?v=202610151749';
+import { olvidarFiltrosProgreso } from './vistas/progreso.js?v=202610151749';
+import { vistaLogin } from './vistas/login.js?v=202610151749';
+import { vistaClave } from './vistas/clave.js?v=202610151749';
 
 const contenido = document.getElementById('contenido');
 const barra = document.getElementById('barra');

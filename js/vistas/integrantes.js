@@ -1,6 +1,6 @@
-import { el, campo, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha, insignia } from '../ui.js?v=202610132104';
-import { agregarIntegrante, agregarIntegranteExcepcion, quitarIntegrante } from '../datos.js?v=202610132104';
-import { ROL_EQUIPO } from '../etiquetas.js?v=202610132104';
+import { el, campo, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha, insignia } from '../ui.js?v=202610151749';
+import { agregarIntegrante, agregarIntegranteExcepcion, quitarIntegrante } from '../datos.js?v=202610151749';
+import { ROL_EQUIPO } from '../etiquetas.js?v=202610151749';
 
 // Integrantes de la iniciativa: una iniciativa puede ser de una persona o de un
 // grupo, sin líder. Cualquier integrante envía el Avance y la Consulta; su correo identifica la

@@ -1,4 +1,4 @@
-import { supabase } from './cliente.js?v=202610132104';
+import { supabase } from './cliente.js?v=202610151749';
 
 // Consultas a Supabase. Cada consulta devuelve solo lo que RLS deja ver a quien tiene la sesión:
 // aquí no se filtra por rol ni por empresa.
@@ -54,8 +54,17 @@ export function olvidarCatalogos() {
   catalogos = null;
 }
 
-export async function listarIniciativas() {
-  const { data, error } = await supabase.from('iniciativa').select(SELECT_INICIATIVA).order('codigo');
+// conCoordinacion: trae también los integrantes activos con su rol, para mostrar quién coordina
+// (puede no ser quien llenó el primer Registro, por ejemplo tras reemplazar sus datos).
+export async function listarIniciativas({ conCoordinacion = false } = {}) {
+  const select = conCoordinacion
+    ? `${SELECT_INICIATIVA},
+  integrantes:integrante!integrante_iniciativa_id_fkey(rol, activo,
+    participante:participante!integrante_participante_id_fkey(id, nombre, correo))`
+    : SELECT_INICIATIVA;
+  let consulta = supabase.from('iniciativa').select(select).order('codigo');
+  if (conCoordinacion) consulta = consulta.eq('integrantes.activo', true);
+  const { data, error } = await consulta;
   if (error) throw error;
   return data;
 }
@@ -311,7 +320,7 @@ export async function crearArea({ empresaId, nombre, nivel, padreId }) {
 const SELECT_RESPUESTA = `
   id, formulario, id_respuesta, enviado_en, correo, codigo_iniciativa, respuestas,
   estado_procesamiento, motivo_revision, procesado_en, resuelto_por, resuelto_en, nota_resolucion,
-  empresa_corregida_id, empresa_corregida_en, reemplaza_iniciativa_id, reemplazo_en,
+  empresa_corregida_id, empresa_corregida_en, reemplaza_iniciativa_id, reemplazo_en, reemplazo_aplicado_en,
   aparte_autorizado_en, aparte_nota, descartado_en, iniciativa_elegida_id, elegida_en`;
 
 // Respuestas pendientes o en revisión, con lo que se creó a partir de cada una.

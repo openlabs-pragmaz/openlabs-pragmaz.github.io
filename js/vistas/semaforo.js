@@ -1,8 +1,8 @@
-import { el, campo, selector, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha } from '../ui.js?v=202610132104';
-import { cambiarEstadoDatos } from '../datos.js?v=202610132104';
+import { el, campo, selector, conBoton, errorEn, errorCampo, mensajeError, avisar, formatoFecha } from '../ui.js?v=202610151749';
+import { cambiarEstadoDatos } from '../datos.js?v=202610151749';
 import {
   SEMAFOROS, textoSemaforo, motivosSemaforo, textoTiposDatos, ORIGEN_DATOS, ENVIO_EXTERNO,
-} from '../etiquetas.js?v=202610132104';
+} from '../etiquetas.js?v=202610151749';
 
 // Semáforo de uso de datos (Registro v3). Lo ven y lo cambian admin y
 // facilitador; la base guarda cada cambio a mano con quién, cuándo y por qué.

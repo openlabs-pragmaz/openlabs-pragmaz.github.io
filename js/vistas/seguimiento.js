@@ -1,5 +1,5 @@
-import { el, formatoFecha } from '../ui.js?v=202610132104';
-import { pregunta, estadoConsulta, textoBloqueos, textoTiposDatos, CAMBIO_EQUIPO } from '../etiquetas.js?v=202610132104';
+import { el, formatoFecha } from '../ui.js?v=202610151749';
+import { pregunta, estadoConsulta, textoBloqueos, textoTiposDatos, CAMBIO_EQUIPO } from '../etiquetas.js?v=202610151749';
 
 // Línea de tiempo del detalle: un paso por punto de guardado del track de la iniciativa
 // (Registro y luego sus sesiones). Cada Avance recibido llena su punto; al pulsar un punto

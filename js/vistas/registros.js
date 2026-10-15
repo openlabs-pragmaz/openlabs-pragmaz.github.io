@@ -1,10 +1,10 @@
-import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610132104';
-import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610132104';
+import { el, pintar, insignia, formatoFecha, mensajeError, normalizar, campo, selector, rolesDeTabla, turnoActual, vigente } from '../ui.js?v=202610151749';
+import { cargarCatalogos, listarIniciativas, cambiosEstadoDatos, bloqueosUltimoAvance } from '../datos.js?v=202610151749';
 import {
   textoHerramienta, textoTipo, caminoArea, unidadesIniciativa, opcionesArea, motivos, SEMAFOROS, BLOQUEOS,
   esRegistroV3, escritoPorNivel, NIVELES_V3, unidadPorClasificar, textoEmpresa,
-} from '../etiquetas.js?v=202610132104';
-import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610132104';
+} from '../etiquetas.js?v=202610151749';
+import { pastillaSemaforo, notaSemaforo } from './semaforo.js?v=202610151749';
 
 // Filtros de la lista: se conservan mientras dura la sesión en esta pestaña (al volver del detalle).
 const FILTROS_INICIALES = { texto: '', empresa: '', area: '', herramienta: '', tipo: '', estado: '', atencion: '', datos: '', bloqueo: '', mvp: false, desactivadas: false };
@@ -61,7 +61,7 @@ export async function vistaRegistros(contenedor, perfil, consulta, { desdeDetall
   let cat; let iniciativas; let cambios; let bloqueos;
   try {
     // El semáforo de uso de datos (y sus cambios a mano) solo lo ven admin y facilitador.
-    [cat, iniciativas, cambios, bloqueos] = await Promise.all([cargarCatalogos(), listarIniciativas(),
+    [cat, iniciativas, cambios, bloqueos] = await Promise.all([cargarCatalogos(), listarIniciativas({ conCoordinacion: true }),
       operador ? cambiosEstadoDatos().catch(() => []) : [],
       filtros.bloqueo ? bloqueosUltimoAvance().catch(() => new Map()) : new Map()]);
   } catch (e) {
@@ -85,7 +85,7 @@ export async function vistaRegistros(contenedor, perfil, consulta, { desdeDetall
       // Su área y todas las de arriba: elegir una unidad en el filtro trae también las de abajo.
       areas: unidadesIniciativa(ini, porId),
       bloqueos: bloqueos.get(ini.id) ?? [],
-      busqueda: [ini.codigo, ini.nombre, ini.participante.nombre, ini.participante.correo, ini.empresa_marca].map(normalizar).join(' '),
+      busqueda: [ini.codigo, ini.nombre, ini.participante.nombre, ini.participante.correo, coordinaDe(ini)?.nombre, coordinaDe(ini)?.correo, ini.empresa_marca].map(normalizar).join(' '),
       fila: fila(ini, porId, operador, areaAsignada, ultimoCambio.get(ini.id)),
     };
   });
@@ -316,8 +316,15 @@ function celdaUnidadV3(ini, porId) {
   ];
 }
 
+// Coordinador activo del grupo (Registro v3). Antes de v3 no hay rol: null.
+function coordinaDe(ini) {
+  return ini.integrantes?.find((g) => g.activo && g.rol === 'coordinador')?.participante ?? null;
+}
+
 function fila(ini, porId, operador, areaAsignada, cambio) {
   const p = ini.participante;
+  // Quien coordina; si no se pudo saber, quien llenó el primer Registro.
+  const c = coordinaDe(ini) ?? p;
   const detalle = `#/registros/${ini.codigo}`;
   const tr = el('tr', { class: ini.activa ? 'fila--enlace' : 'fila--enlace fila--desactivada' },
     el('td', { 'data-etiqueta': COLUMNAS[0] },
@@ -332,7 +339,8 @@ function fila(ini, porId, operador, areaAsignada, cambio) {
               : null)
         : null),
     el('td', { 'data-etiqueta': COLUMNAS[2] },
-      el('span', { text: `${p.nombre} · ${textoEmpresa(ini)}` }), el('span', { class: 'celda__nota celda__correo', text: p.correo })),
+      el('span', { text: `${c.nombre} · ${textoEmpresa(ini)}` }), el('span', { class: 'celda__nota celda__correo', text: c.correo }),
+      c.id !== p.id ? el('span', { class: 'celda__nota', text: `Registró: ${p.nombre}` }) : null),
     el('td', { 'data-etiqueta': COLUMNAS[3] }, esRegistroV3(ini) ? celdaUnidadV3(ini, porId) : (
       // Formulario anterior: solo la unidad desde la que se propuso; el camino completo, al pasar el
       // puntero y en el detalle.

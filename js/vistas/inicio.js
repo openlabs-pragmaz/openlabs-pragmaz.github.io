@@ -1,9 +1,9 @@
-import { el, pintar, ROLES, mensajeError, rolesDeTabla, turnoActual, vigente, conteoRevision, conteoConsultas } from '../ui.js?v=202610132104';
+import { el, pintar, ROLES, mensajeError, rolesDeTabla, turnoActual, vigente, conteoRevision, conteoConsultas } from '../ui.js?v=202610151749';
 import {
   cargarCatalogos, listarIniciativas, idsEnRevision, totalPendientes, contarTicketsSinResponder, bloqueosUltimoAvance,
-} from '../datos.js?v=202610132104';
-import { BLOQUEOS, unidadPorClasificar } from '../etiquetas.js?v=202610132104';
-import { interruptorTablero } from './progreso.js?v=202610132104';
+} from '../datos.js?v=202610151749';
+import { BLOQUEOS, unidadPorClasificar } from '../etiquetas.js?v=202610151749';
+import { interruptorTablero } from './progreso.js?v=202610151749';
 
 const QUE_PUEDE = {
   admin: 'Ves todas las empresas. Puedes revisar y corregir registros, resolver respuestas en revisión y mantener los catálogos.',

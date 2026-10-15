@@ -1,18 +1,18 @@
 import {
   el, pintar, repintar, insignia, formatoFecha, mensajeError, normalizar, turnoActual, vigente, conBoton, errorEn, avisar,
-} from '../ui.js?v=202610132104';
+} from '../ui.js?v=202610151749';
 import {
   cargarCatalogos, obtenerIniciativa, respuestasPendientesDe, consultasSinResponderDe, bitacoraDe, ayudasDe, seleccionarMvp,
   integrantesDe, cambiosEstadoDatos, nombresEquipo, otrasIniciativasDelGrupo,
-} from '../datos.js?v=202610132104';
+} from '../datos.js?v=202610151749';
 import {
   FORMULARIOS, textoHerramienta, textoTipo, textoArea, textoMedida, motivos,
   MODALIDAD, FRECUENCIA, esRegistroV3, escritoPorNivel, NIVELES_V3, textoEmpresa,
-} from '../etiquetas.js?v=202610132104';
-import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610132104';
-import { seccionSeguimiento } from './seguimiento.js?v=202610132104';
-import { seccionIntegrantes } from './integrantes.js?v=202610132104';
-import { seccionUsoDatos } from './semaforo.js?v=202610132104';
+} from '../etiquetas.js?v=202610151749';
+import { formulariosEdicion, sinGuardar } from './edicion.js?v=202610151749';
+import { seccionSeguimiento } from './seguimiento.js?v=202610151749';
+import { seccionIntegrantes } from './integrantes.js?v=202610151749';
+import { seccionUsoDatos } from './semaforo.js?v=202610151749';
 
 const esOperador = (perfil) => perfil.rol === 'admin' || perfil.rol === 'facilitador';
 const gestionaTickets = (perfil) => esOperador(perfil) || perfil.rol === 'soporte';
@@ -348,7 +348,16 @@ function paresOrganizacion(ini, areas) {
     if (ini.org_otro_niveles?.includes(n.clave)) {
       return [n.nivel, `No aparece en la lista; escribió: ${escrito[n.clave] ?? '(nada)'}`];
     }
-    if (new RegExp(`${n.nivel} no reconocida`, 'i').test(ini.motivo_revision ?? '')) return [n.nivel, 'No reconocida en el catálogo (ver la revisión)'];
+    // Opción de la lista que no está en el catálogo (agregada a mano en el formulario). Motivo nuevo
+    // "Elección inesperada en <nivel>: X"; el anterior, "<nivel> no reconocida en el catálogo: X".
+    // Solo Gerencia y Jefatura; Dirección sigue como "no reconocida".
+    const inesperada = (ini.motivo_revision ?? '').match(
+      new RegExp(`(?:Elección inesperada en ${n.nivel}|${n.nivel} no reconocida en el catálogo)[^:;]*: ([^;]*)`, 'i'));
+    if (inesperada) {
+      return [n.nivel, n.clave === 'direccion'
+        ? `No reconocida en el catálogo: ${inesperada[1].trim()} (ver la revisión)`
+        : `Elección inesperada: ${inesperada[1].trim()} (ver la revisión)`];
+    }
     return [n.nivel, n.clave === 'direccion' ? 'No está seguro(a)' : null];
   });
   if (ini.org_cruce_estado === 'revisar') {
